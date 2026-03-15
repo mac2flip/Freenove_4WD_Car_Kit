@@ -4,7 +4,7 @@
   Auther      : www.freenove.com
   Modification: 2019/08/05
 **********************************************************************/
-#include "Servo.h"      //servo liberary
+#include <Servo.h>      //servo library
 
 #define PIN_SERVO  2    //define servo pin
 
