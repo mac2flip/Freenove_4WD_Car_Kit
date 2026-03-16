@@ -1,0 +1,11 @@
+{
+  "C_Cpp.default.configurationProvider": "ms-vscode.cpptools",
+  "C_Cpp.errorSquiggles": "enabled",
+  "files.associations": {
+    "*.ino": "cpp"
+  },
+  "arduino.useArduinoCli": true,
+  "arduino.commandPath": "C:/Program Files/Arduino CLI/arduino-cli.exe",
+  "arduino.defaultBaudRate": 115200,
+  "arduino.logLevel": "info"
+}

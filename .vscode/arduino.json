@@ -1,0 +1,6 @@
+{
+    "sketch": "Sketches/00.0_Servo_90/00.0_Servo_90.ino",
+    "board": "arduino:avr:uno",
+    "output": "build",
+    "port": "COM3"
+}

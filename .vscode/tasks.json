@@ -1,0 +1,72 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Arduino: Compile",
+      "type": "shell",
+      "command": "C:/Program Files/Arduino CLI/arduino-cli.exe",
+      "args": [
+        "compile",
+        "--fqbn", "arduino:avr:uno",
+        "--warnings", "default",
+        "${file}"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Arduino: Compile + Upload",
+      "type": "shell",
+      "command": "C:/Program Files/Arduino CLI/arduino-cli.exe",
+      "args": [
+        "compile",
+        "--verbose",
+        "--fqbn", "arduino:avr:uno",
+        "--warnings", "default",
+        "--upload",
+        "-p", "${input:serialPort}",
+        "${file}"
+      ],
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Arduino: Open Serial Monitor",
+      "type": "shell",
+      "command": "C:/Program Files/Arduino CLI/arduino-cli.exe",
+      "args": [
+        "monitor",
+        "-p", "${input:serialPort}",
+        "--config", "baudrate=115200"
+      ],
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "serialPort",
+      "type": "pickString",
+      "description": "Select the Arduino COM port",
+      "options": ["COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM10"],
+      "default": "COM3"
+    }
+  ]
+}
