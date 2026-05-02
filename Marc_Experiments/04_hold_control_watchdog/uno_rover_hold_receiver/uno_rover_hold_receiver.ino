@@ -2,7 +2,7 @@
   Filename    : uno_rover_hold_receiver.ino
   Project     : Marc_Experiments/04_hold_control_watchdog
   Description : UNO rover motor control using hold-to-drive commands
-                from ESP32, with a failsafe watchdog.
+                from ESP32, with a failsafe watchdog and speed levels.
 
   Behavior:
     F = start/continue forward
@@ -10,6 +10,9 @@
     L = start/continue left/spin-left
     R = start/continue right/spin-right
     S = stop immediately
+    1 = slow speed
+    2 = normal speed
+    3 = fast speed
 
   Failsafe:
     If the UNO does not receive another movement command before the
@@ -28,10 +31,13 @@
 #define PIN_MOTOR_PWM_RIGHT 5
 #define MOTOR_PWM_DEAD      10
 
-#define DRIVE_SPEED         100
-#define TURN_SPEED          100
+#define SPEED_SLOW          80
+#define SPEED_NORMAL        120
+#define SPEED_FAST          170
 #define WATCHDOG_TIMEOUT_MS 500
 
+int currentDriveSpeed = SPEED_NORMAL;
+int currentTurnSpeed = SPEED_NORMAL;
 char activeCommand = 'S';
 unsigned long lastCommandMs = 0;
 bool moving = false;
@@ -40,7 +46,7 @@ void setup() {
   pinsSetup();
   Serial.begin(9600);
   resetCarAction();
-  Serial.println("UNO rover receiver ready - HOLD CONTROL + WATCHDOG MODE");
+  Serial.println("UNO rover receiver ready - HOLD CONTROL + WATCHDOG + SPEED MODE");
 }
 
 void loop() {
@@ -62,19 +68,19 @@ void handleCommand(char cmd) {
 
   switch (cmd) {
     case 'F':
-      startOrRefreshMove('F', DRIVE_SPEED, DRIVE_SPEED);
+      startOrRefreshMove('F', currentDriveSpeed, currentDriveSpeed);
       break;
 
     case 'B':
-      startOrRefreshMove('B', -DRIVE_SPEED, -DRIVE_SPEED);
+      startOrRefreshMove('B', -currentDriveSpeed, -currentDriveSpeed);
       break;
 
     case 'L':
-      startOrRefreshMove('L', -TURN_SPEED, TURN_SPEED);
+      startOrRefreshMove('L', -currentTurnSpeed, currentTurnSpeed);
       break;
 
     case 'R':
-      startOrRefreshMove('R', TURN_SPEED, -TURN_SPEED);
+      startOrRefreshMove('R', currentTurnSpeed, -currentTurnSpeed);
       break;
 
     case 'S':
@@ -82,6 +88,18 @@ void handleCommand(char cmd) {
       resetCarAction();
       moving = false;
       activeCommand = 'S';
+      break;
+
+    case '1':
+      setSpeedLevel('1', SPEED_SLOW);
+      break;
+
+    case '2':
+      setSpeedLevel('2', SPEED_NORMAL);
+      break;
+
+    case '3':
+      setSpeedLevel('3', SPEED_FAST);
       break;
 
     case '\n':
@@ -96,6 +114,16 @@ void handleCommand(char cmd) {
   }
 }
 
+void setSpeedLevel(char level, int speedValue) {
+  currentDriveSpeed = speedValue;
+  currentTurnSpeed = speedValue;
+
+  Serial.print("ACK: speed level ");
+  Serial.print(level);
+  Serial.print(" = ");
+  Serial.println(speedValue);
+}
+
 void startOrRefreshMove(char cmd, int leftSpeed, int rightSpeed) {
   lastCommandMs = millis();
 
@@ -108,7 +136,8 @@ void startOrRefreshMove(char cmd, int leftSpeed, int rightSpeed) {
 
     Serial.print("ACK: ");
     Serial.print(cmd);
-    Serial.println(" = move active");
+    Serial.print(" = move active at speed ");
+    Serial.println(currentDriveSpeed);
   }
 }
 
