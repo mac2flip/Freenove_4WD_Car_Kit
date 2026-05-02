@@ -20,6 +20,8 @@
 - ESP command cycle `F -> S -> B -> S -> L -> S -> R -> S` was confirmed by UNO ACK output
 - Safe pulse mode was confirmed: UNO receives movement commands, runs short pulses, and auto-stops
 - Camera web-control mode was confirmed: browser buttons on the ESP32 web page send commands to the UNO successfully
+- Combined camera + rover control page was confirmed working on port 82
+- Hold-to-drive control was confirmed working: holding a direction repeatedly sends movement commands and releasing sends `S`
 
 ## Important Notes
 
@@ -31,6 +33,7 @@
 - Rover motors do not move when powered only by USB-C/USB; battery power is required for actual motor movement.
 - GPIO5 conflicts with the WROVER camera pin map, so do not use GPIO5 for UART when the camera is active.
 - Any UART-based controller can be tested against the UNO command parser as long as it sends `F/B/L/R/S` at 9600 baud and shares ground with the UNO.
+- ESP32 USB debug serial uses `115200` baud. ESP-to-UNO UART uses `9600` baud.
 
 ## Confirmed ACK Test
 
@@ -74,6 +77,28 @@ The ESP32 camera sketch was extended with a rover control web page on port 82.
 - Command endpoint: `http://<ESP32-IP>:82/cmd?move=F`
 
 Browser buttons successfully sent movement commands to the UNO.
+
+## Confirmed Combined Camera + Hold Control Test
+
+The ESP32 page now shows the camera stream and rover controls on the same page.
+
+- Combined page: `http://<ESP32-IP>:82/`
+- Direction buttons use hold-to-drive behavior
+- Holding a direction repeatedly sends that command
+- Releasing sends `S`
+- The `S` button remains as an emergency/manual stop
+- UNO hold receiver includes a watchdog auto-stop if commands stop arriving
+
+Example ESP serial output during successful hold test:
+
+```text
+Sent rover command: S
+Sent rover command: R
+Sent rover command: S
+Sent rover command: R
+Sent rover command: R
+Sent rover command: S
+```
 
 ## Future Flipper Zero Test Idea
 
