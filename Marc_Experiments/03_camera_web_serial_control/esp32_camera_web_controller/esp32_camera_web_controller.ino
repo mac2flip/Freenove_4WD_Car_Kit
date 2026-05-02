@@ -9,22 +9,8 @@
   Camera page:
     http://<ESP32-IP>/
 
-  Rover control page:
+  Combined rover page:
     http://<ESP32-IP>:82/
-
-  Rover command endpoint:
-    http://<ESP32-IP>:82/cmd?move=F
-    http://<ESP32-IP>:82/cmd?move=B
-    http://<ESP32-IP>:82/cmd?move=L
-    http://<ESP32-IP>:82/cmd?move=R
-    http://<ESP32-IP>:82/cmd?move=S
-
-  IMPORTANT PIN NOTE:
-    GPIO5 worked for the earlier serial-only test, but the WROVER camera
-    config uses GPIO5 as camera Y3. Do NOT use GPIO5 while the camera is active.
-
-    Default rover UART TX below is GPIO15. If GPIO15 does not work on your
-    board, try another exposed free GPIO that is not used by the camera.
 **********************************************************************/
 
 #include "esp_camera.h"
@@ -32,8 +18,6 @@
 #include <WebServer.h>
 #include <HardwareSerial.h>
 
-// Reuse the existing, known-good camera config and Wi-Fi credentials.
-// This keeps the original 07.1_Camera_Test sketch untouched.
 #include "../../../Sketches/07.1_Camera_Test/board_config.h"
 #include "../../../Sketches/07.1_Camera_Test/credentials.h"
 
@@ -49,13 +33,9 @@ void handleRoverControlPage();
 void handleRoverCommand();
 void sendRoverCommand(char cmd);
 
-// Camera server uses port 80/stream handling from the original Freenove code.
-// This lightweight rover controller runs separately on port 82.
 WebServer roverServer(82);
 HardwareSerial UnoSerial(1);
 
-// GPIO5 conflicts with the WROVER camera pin map.
-// GPIO15 is the current test candidate for ESP -> UNO UART TX while camera is active.
 #define ROVER_UART_TX_PIN 15
 #define ROVER_UART_BAUD   9600
 
@@ -63,10 +43,8 @@ void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
-  Serial.println("ESP32 camera + rover web controller starting...");
+  Serial.println("ESP32 camera rover page starting...");
 
-  // Start UART to UNO.
-  // RX unused for now (-1), TX = ROVER_UART_TX_PIN.
   UnoSerial.begin(ROVER_UART_BAUD, SERIAL_8N1, -1, ROVER_UART_TX_PIN);
   Serial.print("UNO UART TX pin: GPIO");
   Serial.println(ROVER_UART_TX_PIN);
@@ -80,10 +58,10 @@ void setup() {
   }
 
   sensor_t *s = esp_camera_sensor_get();
-  s->set_vflip(s, 0);        // 1-Upside down, 0-No operation
-  s->set_hmirror(s, 0);      // 1-Reverse left and right, 0-No operation
-  s->set_brightness(s, 1);   // Up the brightness just a bit
-  s->set_saturation(s, -1);  // Lower the saturation
+  s->set_vflip(s, 0);
+  s->set_hmirror(s, 0);
+  s->set_brightness(s, 1);
+  s->set_saturation(s, -1);
 
   WiFi.begin(ssid_Router, password_Router);
   WiFi.setSleep(false);
@@ -97,13 +75,12 @@ void setup() {
   startCameraServer();
   startRoverControlServer();
 
-  Serial.print("Camera Ready! Use 'http://");
-  Serial.print(WiFi.localIP());
-  Serial.println("' to connect");
+  Serial.print("Camera page: http://");
+  Serial.println(WiFi.localIP());
 
-  Serial.print("Rover Control Ready! Use 'http://");
+  Serial.print("Combined page: http://");
   Serial.print(WiFi.localIP());
-  Serial.println(":82' to connect");
+  Serial.println(":82");
 }
 
 void loop() {
@@ -142,7 +119,7 @@ void startRoverControlServer() {
   roverServer.on("/", HTTP_GET, handleRoverControlPage);
   roverServer.on("/cmd", HTTP_GET, handleRoverCommand);
   roverServer.begin();
-  Serial.println("Rover control server started on port 82");
+  Serial.println("Rover web page started on port 82");
 }
 
 void handleRoverControlPage() {
@@ -151,38 +128,52 @@ void handleRoverControlPage() {
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rover Control</title>
+  <title>Rover Camera Page</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-    .grid { display: inline-grid; grid-template-columns: 90px 90px 90px; gap: 10px; }
-    button { font-size: 22px; padding: 18px; border-radius: 10px; }
-    .stop { font-weight: bold; }
-    #status { margin-top: 16px; font-size: 16px; }
-    a { display: block; margin-top: 20px; }
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 12px; background: #111; color: #eee; }
+    .layout { display: flex; flex-direction: column; gap: 12px; align-items: center; max-width: 900px; margin: 0 auto; }
+    .video-wrap { width: 100%; max-width: 640px; background: #000; border: 1px solid #333; border-radius: 10px; overflow: hidden; }
+    #stream { display: block; width: 100%; height: auto; }
+    .controls { width: 100%; max-width: 340px; padding: 12px; background: #1c1c1c; border: 1px solid #333; border-radius: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    button { font-size: 24px; padding: 18px 10px; border-radius: 12px; border: 1px solid #555; background: #2b2b2b; color: #fff; }
+    button:active { transform: scale(0.97); }
+    .stop { font-weight: bold; background: #4a1f1f; }
+    #status { margin-top: 12px; min-height: 22px; font-size: 16px; color: #cfcfcf; }
+    a { color: #8ab4ff; margin: 0 8px; }
+    @media (min-width: 800px) { .layout { flex-direction: row; align-items: flex-start; justify-content: center; } .controls { max-width: 300px; } }
   </style>
 </head>
 <body>
-  <h2>ESP32 Rover Control</h2>
-  <div class="grid">
-    <div></div><button onclick="sendCmd('F')">F</button><div></div>
-    <button onclick="sendCmd('L')">L</button><button class="stop" onclick="sendCmd('S')">S</button><button onclick="sendCmd('R')">R</button>
-    <div></div><button onclick="sendCmd('B')">B</button><div></div>
+  <h2>ESP32 Rover Camera Page</h2>
+  <div class="layout">
+    <div class="video-wrap"><img id="stream" alt="Camera stream"></div>
+    <div class="controls">
+      <div class="grid">
+        <div></div><button onclick="sendCmd('F')">F</button><div></div>
+        <button onclick="sendCmd('L')">L</button><button class="stop" onclick="sendCmd('S')">S</button><button onclick="sendCmd('R')">R</button>
+        <div></div><button onclick="sendCmd('B')">B</button><div></div>
+      </div>
+      <div id="status">Ready</div>
+      <p><a href="#" onclick="openCameraPage(); return false;">Camera settings</a> <a href="#" onclick="reloadStream(); return false;">Reload stream</a></p>
+    </div>
   </div>
-  <div id="status">Ready</div>
-  <a href="/" onclick="location.href='http://' + location.hostname + '/'; return false;">Open Camera Page</a>
-
 <script>
+function streamUrl() { return 'http://' + location.hostname + ':81/stream'; }
+function cameraPageUrl() { return 'http://' + location.hostname + '/'; }
+function reloadStream() { document.getElementById('stream').src = streamUrl() + '?t=' + Date.now(); }
+function openCameraPage() { location.href = cameraPageUrl(); }
 async function sendCmd(cmd) {
   const status = document.getElementById('status');
   status.textContent = 'Sending ' + cmd + '...';
   try {
     const res = await fetch('/cmd?move=' + encodeURIComponent(cmd));
-    const text = await res.text();
-    status.textContent = text;
+    status.textContent = await res.text();
   } catch (e) {
     status.textContent = 'Error: ' + e;
   }
 }
+reloadStream();
 </script>
 </body>
 </html>
@@ -219,7 +210,4 @@ void sendRoverCommand(char cmd) {
   Serial.println(cmd);
 }
 
-// Pull in the original Freenove camera web server implementation.
-// This lets this experiment reuse the known-good camera page without copying
-// or modifying the original camera server files.
 #include "../../../Sketches/07.1_Camera_Test/app_httpd.cpp"
