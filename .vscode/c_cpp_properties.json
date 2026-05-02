@@ -2,6 +2,35 @@
     "version": 4,
     "configurations": [
         {
+            "name": "ESP32",
+            "compilerPath": "${env:LOCALAPPDATA}/Arduino15/packages/esp32/tools/esp-x32/2511/bin/xtensa-esp32-elf-g++.exe",
+            "compilerArgs": [
+                "-mlongcalls"
+            ],
+            "intelliSenseMode": "gcc-x64",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.7/cores/esp32",
+                "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.7/variants/esp32",
+                "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.7/libraries/**",
+                "${env:LOCALAPPDATA}/Arduino15/packages/esp32/tools/esp-x32/2511/xtensa-esp32-elf/include/**",
+                "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.7/tools/sdk/esp32/include/**"
+            ],
+            "forcedInclude": [
+                "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.7/cores/esp32/Arduino.h"
+            ],
+            "defines": [
+                "ARDUINO=10819",
+                "ARDUINO_ESP32_DEV",
+                "ARDUINO_ARCH_ESP32",
+                "ESP32",
+                "F_CPU=240000000L",
+                "CAMERA_MODEL_WROVER_KIT"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        },
+        {
             "name": "Win32",
             "compilerPath": "${env:LOCALAPPDATA}/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++.exe",
             "compilerArgs": [],
