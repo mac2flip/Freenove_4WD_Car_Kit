@@ -125,7 +125,7 @@ void handleRoverControlPage() {
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Rover Camera Page</title>
 <style>
-body{font-family:Arial,sans-serif;text-align:center;margin:0;padding:12px;background:#111;color:#eee}.layout{display:flex;flex-direction:column;gap:12px;align-items:center;max-width:900px;margin:0 auto}.video-wrap{width:100%;max-width:640px;background:#000;border:1px solid #333;border-radius:10px;overflow:hidden}#stream{display:block;width:100%;height:auto}.controls{width:100%;max-width:340px;padding:12px;background:#1c1c1c;border:1px solid #333;border-radius:12px}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}button{font-size:24px;padding:18px 10px;border-radius:12px;border:1px solid #555;background:#2b2b2b;color:#fff;touch-action:none;user-select:none}button:active,.active{transform:scale(.97);background:#3b3b3b}.stop{font-weight:bold;background:#4a1f1f}#status{margin-top:12px;min-height:22px;font-size:16px;color:#cfcfcf}.hint{font-size:13px;color:#aaa}a{color:#8ab4ff;margin:0 8px}@media(min-width:800px){.layout{flex-direction:row;align-items:flex-start;justify-content:center}.controls{max-width:300px}}
+body{font-family:Arial,sans-serif;text-align:center;margin:0;padding:12px;background:#111;color:#eee}.layout{display:flex;flex-direction:column;gap:12px;align-items:center;max-width:900px;margin:0 auto}.video-wrap{width:100%;max-width:640px;background:#000;border:1px solid #333;border-radius:10px;overflow:hidden}#stream{display:block;width:100%;height:auto}.controls{width:100%;max-width:360px;padding:12px;background:#1c1c1c;border:1px solid #333;border-radius:12px}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}button{font-size:24px;padding:18px 10px;border-radius:12px;border:1px solid #555;background:#2b2b2b;color:#fff;touch-action:none;user-select:none}button:active,.active{transform:scale(.97);background:#3b3b3b}.stop{font-weight:bold;background:#4a1f1f}.speed-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}.speed-row button{font-size:16px;padding:12px 8px}.selected{background:#1f3f2a;border-color:#67b26f}#status{margin-top:12px;min-height:22px;font-size:16px;color:#cfcfcf}.hint{font-size:13px;color:#aaa}a{color:#8ab4ff;margin:0 8px}@media(min-width:800px){.layout{flex-direction:row;align-items:flex-start;justify-content:center}.controls{max-width:320px}}
 </style></head><body>
 <h2>ESP32 Rover Camera Page</h2>
 <div class="layout"><div class="video-wrap"><img id="stream" alt="Camera stream"></div>
@@ -133,22 +133,26 @@ body{font-family:Arial,sans-serif;text-align:center;margin:0;padding:12px;backgr
 <div></div><button data-cmd="F">F</button><div></div>
 <button data-cmd="L">L</button><button class="stop" onclick="tapStop()">S</button><button data-cmd="R">R</button>
 <div></div><button data-cmd="B">B</button><div></div>
-</div><div id="status">Ready</div><div class="hint">Hold F/B/L/R to move. Release to stop. S is emergency stop.</div>
+</div>
+<div class="speed-row"><button id="speed1" onclick="setSpeed('1')">Slow</button><button id="speed2" class="selected" onclick="setSpeed('2')">Normal</button><button id="speed3" onclick="setSpeed('3')">Fast</button></div>
+<div id="status">Ready</div><div class="hint">Hold F/B/L/R to move. Release to stop. S is emergency stop.</div>
 <p><a href="#" onclick="openCameraPage();return false;">Camera settings</a> <a href="#" onclick="reloadStream();return false;">Reload stream</a></p>
 </div></div>
 <script>
-let holdTimer=null, activeCmd=null;
+let holdTimer=null, activeCmd=null, currentSpeed='2';
 function streamUrl(){return 'http://'+location.hostname+':81/stream'}
 function cameraPageUrl(){return 'http://'+location.hostname+'/'}
 function reloadStream(){document.getElementById('stream').src=streamUrl()+'?t='+Date.now()}
 function openCameraPage(){location.href=cameraPageUrl()}
 async function sendCmd(cmd){const s=document.getElementById('status');try{const r=await fetch('/cmd?move='+encodeURIComponent(cmd));s.textContent=await r.text()}catch(e){s.textContent='Error: '+e}}
 function startHold(cmd,btn){if(activeCmd)return;activeCmd=cmd;btn.classList.add('active');sendCmd(cmd);holdTimer=setInterval(()=>sendCmd(cmd),200)}
-function stopHold(){if(holdTimer){clearInterval(holdTimer);holdTimer=null}document.querySelectorAll('button').forEach(b=>b.classList.remove('active'));if(activeCmd){activeCmd=null;sendCmd('S')}}
+function stopHold(){if(holdTimer){clearInterval(holdTimer);holdTimer=null}document.querySelectorAll('button').forEach(b=>b.classList.remove('active'));selectSpeedButton(currentSpeed);if(activeCmd){activeCmd=null;sendCmd('S')}}
 function tapStop(){stopHold();sendCmd('S')}
+function selectSpeedButton(level){['1','2','3'].forEach(x=>{const b=document.getElementById('speed'+x);if(b)b.classList.toggle('selected',x===level)})}
+function setSpeed(level){currentSpeed=level;selectSpeedButton(level);sendCmd(level)}
 document.querySelectorAll('button[data-cmd]').forEach(btn=>{const c=btn.dataset.cmd;btn.addEventListener('mousedown',e=>{e.preventDefault();startHold(c,btn)});btn.addEventListener('touchstart',e=>{e.preventDefault();startHold(c,btn)},{passive:false});});
 document.addEventListener('mouseup',stopHold);document.addEventListener('touchend',stopHold);document.addEventListener('touchcancel',stopHold);window.addEventListener('blur',stopHold);
-reloadStream();
+reloadStream();selectSpeedButton(currentSpeed);
 </script></body></html>
 )rawliteral";
 
@@ -168,8 +172,8 @@ void handleRoverCommand() {
   }
 
   char cmd = toupper(move.charAt(0));
-  if (cmd != 'F' && cmd != 'B' && cmd != 'L' && cmd != 'R' && cmd != 'S') {
-    roverServer.send(400, "text/plain", "Invalid command. Use F, B, L, R, or S.");
+  if (cmd != 'F' && cmd != 'B' && cmd != 'L' && cmd != 'R' && cmd != 'S' && cmd != '1' && cmd != '2' && cmd != '3') {
+    roverServer.send(400, "text/plain", "Invalid command. Use F, B, L, R, S, 1, 2, or 3.");
     return;
   }
 
