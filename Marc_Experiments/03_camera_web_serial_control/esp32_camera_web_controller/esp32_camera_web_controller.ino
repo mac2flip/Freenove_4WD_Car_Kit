@@ -1,10 +1,7 @@
 /**********************************************************************
   Filename    : esp32_camera_web_controller.ino
   Project     : Marc_Experiments/03_camera_web_serial_control
-  Description : Camera web server + simple rover command web page.
-
-  This experiment reuses the known-good Freenove camera web server files
-  from Sketches/07.1_Camera_Test without modifying the original sketch.
+  Description : Camera web server + hold-to-drive rover command page.
 
   Camera page:
     http://<ESP32-IP>/
@@ -124,59 +121,35 @@ void startRoverControlServer() {
 
 void handleRoverControlPage() {
   String html = R"rawliteral(
-<!doctype html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rover Camera Page</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 12px; background: #111; color: #eee; }
-    .layout { display: flex; flex-direction: column; gap: 12px; align-items: center; max-width: 900px; margin: 0 auto; }
-    .video-wrap { width: 100%; max-width: 640px; background: #000; border: 1px solid #333; border-radius: 10px; overflow: hidden; }
-    #stream { display: block; width: 100%; height: auto; }
-    .controls { width: 100%; max-width: 340px; padding: 12px; background: #1c1c1c; border: 1px solid #333; border-radius: 12px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-    button { font-size: 24px; padding: 18px 10px; border-radius: 12px; border: 1px solid #555; background: #2b2b2b; color: #fff; }
-    button:active { transform: scale(0.97); }
-    .stop { font-weight: bold; background: #4a1f1f; }
-    #status { margin-top: 12px; min-height: 22px; font-size: 16px; color: #cfcfcf; }
-    a { color: #8ab4ff; margin: 0 8px; }
-    @media (min-width: 800px) { .layout { flex-direction: row; align-items: flex-start; justify-content: center; } .controls { max-width: 300px; } }
-  </style>
-</head>
-<body>
-  <h2>ESP32 Rover Camera Page</h2>
-  <div class="layout">
-    <div class="video-wrap"><img id="stream" alt="Camera stream"></div>
-    <div class="controls">
-      <div class="grid">
-        <div></div><button onclick="sendCmd('F')">F</button><div></div>
-        <button onclick="sendCmd('L')">L</button><button class="stop" onclick="sendCmd('S')">S</button><button onclick="sendCmd('R')">R</button>
-        <div></div><button onclick="sendCmd('B')">B</button><div></div>
-      </div>
-      <div id="status">Ready</div>
-      <p><a href="#" onclick="openCameraPage(); return false;">Camera settings</a> <a href="#" onclick="reloadStream(); return false;">Reload stream</a></p>
-    </div>
-  </div>
+<!doctype html><html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Rover Camera Page</title>
+<style>
+body{font-family:Arial,sans-serif;text-align:center;margin:0;padding:12px;background:#111;color:#eee}.layout{display:flex;flex-direction:column;gap:12px;align-items:center;max-width:900px;margin:0 auto}.video-wrap{width:100%;max-width:640px;background:#000;border:1px solid #333;border-radius:10px;overflow:hidden}#stream{display:block;width:100%;height:auto}.controls{width:100%;max-width:340px;padding:12px;background:#1c1c1c;border:1px solid #333;border-radius:12px}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}button{font-size:24px;padding:18px 10px;border-radius:12px;border:1px solid #555;background:#2b2b2b;color:#fff;touch-action:none;user-select:none}button:active,.active{transform:scale(.97);background:#3b3b3b}.stop{font-weight:bold;background:#4a1f1f}#status{margin-top:12px;min-height:22px;font-size:16px;color:#cfcfcf}.hint{font-size:13px;color:#aaa}a{color:#8ab4ff;margin:0 8px}@media(min-width:800px){.layout{flex-direction:row;align-items:flex-start;justify-content:center}.controls{max-width:300px}}
+</style></head><body>
+<h2>ESP32 Rover Camera Page</h2>
+<div class="layout"><div class="video-wrap"><img id="stream" alt="Camera stream"></div>
+<div class="controls"><div class="grid">
+<div></div><button data-cmd="F">F</button><div></div>
+<button data-cmd="L">L</button><button class="stop" onclick="tapStop()">S</button><button data-cmd="R">R</button>
+<div></div><button data-cmd="B">B</button><div></div>
+</div><div id="status">Ready</div><div class="hint">Hold F/B/L/R to move. Release to stop. S is emergency stop.</div>
+<p><a href="#" onclick="openCameraPage();return false;">Camera settings</a> <a href="#" onclick="reloadStream();return false;">Reload stream</a></p>
+</div></div>
 <script>
-function streamUrl() { return 'http://' + location.hostname + ':81/stream'; }
-function cameraPageUrl() { return 'http://' + location.hostname + '/'; }
-function reloadStream() { document.getElementById('stream').src = streamUrl() + '?t=' + Date.now(); }
-function openCameraPage() { location.href = cameraPageUrl(); }
-async function sendCmd(cmd) {
-  const status = document.getElementById('status');
-  status.textContent = 'Sending ' + cmd + '...';
-  try {
-    const res = await fetch('/cmd?move=' + encodeURIComponent(cmd));
-    status.textContent = await res.text();
-  } catch (e) {
-    status.textContent = 'Error: ' + e;
-  }
-}
+let holdTimer=null, activeCmd=null;
+function streamUrl(){return 'http://'+location.hostname+':81/stream'}
+function cameraPageUrl(){return 'http://'+location.hostname+'/'}
+function reloadStream(){document.getElementById('stream').src=streamUrl()+'?t='+Date.now()}
+function openCameraPage(){location.href=cameraPageUrl()}
+async function sendCmd(cmd){const s=document.getElementById('status');try{const r=await fetch('/cmd?move='+encodeURIComponent(cmd));s.textContent=await r.text()}catch(e){s.textContent='Error: '+e}}
+function startHold(cmd,btn){if(activeCmd)return;activeCmd=cmd;btn.classList.add('active');sendCmd(cmd);holdTimer=setInterval(()=>sendCmd(cmd),200)}
+function stopHold(){if(holdTimer){clearInterval(holdTimer);holdTimer=null}document.querySelectorAll('button').forEach(b=>b.classList.remove('active'));if(activeCmd){activeCmd=null;sendCmd('S')}}
+function tapStop(){stopHold();sendCmd('S')}
+document.querySelectorAll('button[data-cmd]').forEach(btn=>{const c=btn.dataset.cmd;btn.addEventListener('mousedown',e=>{e.preventDefault();startHold(c,btn)});btn.addEventListener('touchstart',e=>{e.preventDefault();startHold(c,btn)},{passive:false});});
+document.addEventListener('mouseup',stopHold);document.addEventListener('touchend',stopHold);document.addEventListener('touchcancel',stopHold);window.addEventListener('blur',stopHold);
 reloadStream();
-</script>
-</body>
-</html>
+</script></body></html>
 )rawliteral";
 
   roverServer.send(200, "text/html", html);
