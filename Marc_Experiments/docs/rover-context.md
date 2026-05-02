@@ -30,6 +30,7 @@
 - Current test is one-way only: ESP -> UNO.
 - Rover motors do not move when powered only by USB-C/USB; battery power is required for actual motor movement.
 - GPIO5 conflicts with the WROVER camera pin map, so do not use GPIO5 for UART when the camera is active.
+- Any UART-based controller can be tested against the UNO command parser as long as it sends `F/B/L/R/S` at 9600 baud and shares ground with the UNO.
 
 ## Confirmed ACK Test
 
@@ -73,6 +74,26 @@ The ESP32 camera sketch was extended with a rover control web page on port 82.
 - Command endpoint: `http://<ESP32-IP>:82/cmd?move=F`
 
 Browser buttons successfully sent movement commands to the UNO.
+
+## Future Flipper Zero Test Idea
+
+The Flipper Zero GPIO UART can be used as another command source for testing the UNO without using the RF controller or ESP web controller.
+
+Potential wiring:
+
+- Flipper TX -> UNO RX
+- Flipper GND -> UNO GND
+- Baud: 9600
+
+The Flipper would send the same single-character commands:
+
+- `F` = forward
+- `B` = backward
+- `L` = left
+- `R` = right
+- `S` = stop
+
+Important: only one device should drive UNO RX at a time. Disconnect ESP TX/Bluetooth/RF serial sources before connecting Flipper TX to UNO RX.
 
 ## Goal
 
