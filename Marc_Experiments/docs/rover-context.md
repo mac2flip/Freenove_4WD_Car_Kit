@@ -16,6 +16,7 @@
 - ESP sends `F` once per second
 - UNO receives `F` successfully
 - ESP command cycle `F -> S -> B -> S -> L -> S -> R -> S` was confirmed by UNO ACK output
+- Safe pulse mode was confirmed: UNO receives movement commands, runs short pulses, and auto-stops
 
 ## Important Notes
 
@@ -24,6 +25,7 @@
 - Upload UNO sketch before connecting ESP TX to UNO RX.
 - Disconnect ESP GPIO5 from UNO RX before uploading sketches to the UNO, then reconnect it after upload.
 - Current test is one-way only: ESP -> UNO.
+- Rover motors do not move when powered only by USB-C/USB; battery power is required for actual motor movement.
 
 ## Confirmed ACK Test
 
@@ -38,6 +40,24 @@ ACK: F = forward command received
 ACK: S = stop command received
 ACK: B = backward command received
 ACK: S = stop command received
+```
+
+## Confirmed Safe Pulse Test
+
+UNO successfully acknowledged movement commands, started short pulses, and auto-stopped:
+
+```text
+ACK: L = left pulse
+AUTO-STOP
+ACK: S = stop now
+ACK: R = right pulse
+AUTO-STOP
+ACK: S = stop now
+ACK: F = forward pulse
+AUTO-STOP
+ACK: S = stop now
+ACK: B = backward pulse
+AUTO-STOP
 ```
 
 ## Goal
